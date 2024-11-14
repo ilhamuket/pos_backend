@@ -1,73 +1,161 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# POS Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+POS Backend adalah aplikasi backend untuk sistem Point of Sale (POS) yang dibangun menggunakan NestJS. Aplikasi ini menyediakan endpoint untuk mengelola pengguna, inventaris, produk, dan transaksi, serta dilindungi dengan autentikasi JWT.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Fitur
 
-## Description
+- Autentikasi dan otorisasi menggunakan JWT
+- Manajemen pengguna
+- Manajemen inventaris
+- Manajemen produk
+- Manajemen transaksi
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Prasyarat
 
-## Installation
+- Node.js (versi 14 atau lebih baru)
+- NPM (versi 6 atau lebih baru)
+- PostgreSQL (atau database lain yang didukung TypeORM)
 
-```bash
-$ npm install
+## Instalasi
+
+1. **Clone repositori ini:**
+
+   ```bash
+   git clone https://github.com/username/pos-backend.git
+   cd pos-backend
+   ```
+
+2. **Instal dependensi:**
+
+   ```bash
+   npm install
+   ```
+
+3. **Konfigurasi database:**
+
+   Buat file `.env` di root proyek dan tambahkan konfigurasi database Anda:
+
+   ```env
+   DATABASE_HOST=localhost
+   DATABASE_PORT=5432
+   DATABASE_USER=your_db_user
+   DATABASE_PASSWORD=your_db_password
+   DATABASE_NAME=your_db_name
+   JWT_SECRET=yourSecretKey
+   ```
+
+4. **Jalankan migrasi database:**
+
+   ```bash
+   npm run typeorm migration:run
+   ```
+
+5. **Jalankan aplikasi:**
+
+   ```bash
+   npm run start:dev
+   ```
+
+## Penggunaan
+
+### Endpoint Autentikasi
+
+#### Register
+
+- **URL:** `http://localhost:3000/auth/register`
+- **Method:** POST
+- **Headers:** `Content-Type: application/json`
+- **Body:**
+  ```json
+  {
+    "username": "testuser",
+    "email": "testuser@example.com",
+    "password": "password123"
+  }
+  ```
+
+#### Login
+
+- **URL:** `http://localhost:3000/auth/login`
+- **Method:** POST
+- **Headers:** `Content-Type: application/json`
+- **Body:**
+  ```json
+  {
+    "username": "testuser",
+    "password": "password123"
+  }
+  ```
+- **Response:**
+  ```json
+    {
+      "access_token": "your.jwt.token"
+    }
+  ```
+
+### Endpoint yang Dilindungi
+
+Gunakan token JWT yang diperoleh dari endpoint login untuk mengakses endpoint yang dilindungi.
+
+#### Inventory
+
+- **URL:** `http://localhost:3000/inventory`
+- **Method:** GET
+- **Headers:**
+  ```plaintext
+  Authorization: Bearer your.jwt.token
+  ```
+
+#### Product
+
+- **URL:** `http://localhost:3000/product`
+- **Method:** GET
+- **Headers:**
+  ```plaintext
+  Authorization: Bearer your.jwt.token
+  ```
+
+#### Transactions
+
+- **URL:** `http://localhost:3000/transactions`
+- **Method:** GET
+- **Headers:**
+  ```plaintext
+  Authorization: Bearer your.jwt.token
+  ```
+
+## Struktur Proyek
+
+```
+src/
+├── auth/
+│   ├── auth.controller.ts
+│   ├── auth.module.ts
+│   ├── auth.service.ts
+│   ├── dto/
+│   │   ├── login.dto.ts
+│   │   └── register.dto.ts
+│   ├── jwt.strategy.ts
+├── users/
+│   ├── users.controller.ts
+│   ├── users.module.ts
+│   ├── users.service.ts
+│   ├── users.entity.ts
+├── inventory/
+│   ├── inventory.controller.ts
+│   ├── inventory.module.ts
+│   ├── inventory.service.ts
+├── product/
+│   ├── product.controller.ts
+│   ├── product.module.ts
+│   ├── product.service.ts
+├── transactions/
+│   ├── transactions.controller.ts
+│   ├── transactions.module.ts
+│   ├── transactions.service.ts
+├── app.module.ts
 ```
 
-## Running the app
+  ## Lisensi
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Test
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).
+  Proyek ini dilisensikan di bawah lisensi MIT. Lihat file [LICENSE](LICENSE) untuk informasi lebih lanjut.
