@@ -8,14 +8,19 @@ import { JwtStrategy } from './jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../users/users.entity';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
-    JwtModule.register({
-      secret: 'yourSecretKey', // Gunakan secret key yang aman
-      signOptions: { expiresIn: '60m' }, // Token berlaku selama 1 jam
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: configService.get<number>('JWT_EXPIRES_IN') },
+      }),
+      inject: [ConfigService],
     }),
     TypeOrmModule.forFeature([User])
   ],
