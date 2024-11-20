@@ -8,6 +8,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { CategoriesModule } from './categories/categories.module';
 
 
 @Module({
@@ -17,6 +18,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     ProductsModule,
     TransactionsModule,
     InventoryModule,
+    CategoriesModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
