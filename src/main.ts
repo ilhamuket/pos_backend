@@ -19,6 +19,14 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(3001);
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+
+  const herokuAppName = process.env.HEROKU_APP_NAME;
+  const url = herokuAppName
+    ? `https://${herokuAppName}.herokuapp.com`
+    : `http://localhost:${port}`;
+
+  console.log(`Application is running on: ${url}`);
 }
 bootstrap();
