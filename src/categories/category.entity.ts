@@ -5,7 +5,7 @@ import { ApiProperty } from '@nestjs/swagger';
 @Entity()
 export class Category {
   @PrimaryGeneratedColumn()
-  @ApiProperty({ example: 1, description: 'The unique identifier of the category' })
+  @ApiProperty({ example: 1, description: 'The unique identifier of the category', readOnly: true })
   id: number;
 
   @Column()

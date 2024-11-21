@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -18,6 +18,13 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async login(@Body() loginDto: LoginDto) {
     const user = await this.authService.validateUser(loginDto.username, loginDto.password);
+    const { username, password } = loginDto;
+    if (!username || !password) {
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'Username and password are required',
+      };
+    }
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -32,11 +39,11 @@ export class AuthController {
     const { username, email, password } = registerDto;
     console.log('Received register data:', registerDto); // Log data received
     if (!username || !email || !password) {
-      throw new Error('Username, email, and password are required');
+      throw new HttpException('Username, email, and password are required', HttpStatus.BAD_REQUEST);
     }
     const userExists = await this.usersService.findByEmail(email);
     if (userExists) {
-      throw new Error('User already exists');
+      throw new HttpException('User already exists', HttpStatus.BAD_REQUEST);
     }
     return this.usersService.createUser(username, email, password);
   }
