@@ -2,6 +2,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { User } from '../../users/users.entity';
 import { OrderItem } from '../../order-items/entities/order-item.entity';
+import { Transaction } from '../../transactions/entities/transaction.entity';
 
 export enum PaymentMethod {
   CASH = 'cash',
@@ -33,4 +34,7 @@ export class Order {
   @ManyToOne(() => User, (user) => user.orders)
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  @OneToMany(() => Transaction, (transaction) => transaction.order)
+  transactions: Transaction[];
 }
