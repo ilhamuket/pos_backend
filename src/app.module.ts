@@ -9,6 +9,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CategoriesModule } from './categories/categories.module';
+import { Order } from './orders/entities/order.entity';
+import { User } from './users/users.entity';
+import { OrderItem } from './order-items/entities/order-item.entity';
+import { OrdersModule } from './orders/orders.module';
+import { OrderItemsModule } from './order-items/order-items.module';
+
 
 
 @Module({
@@ -19,6 +25,8 @@ import { CategoriesModule } from './categories/categories.module';
     TransactionsModule,
     InventoryModule,
     CategoriesModule,
+    OrdersModule,
+    OrderItemsModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -28,6 +36,7 @@ import { CategoriesModule } from './categories/categories.module';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
+        entities: [User, Order, OrderItem], 
         autoLoadEntities: true,
         synchronize: true,
       }),
