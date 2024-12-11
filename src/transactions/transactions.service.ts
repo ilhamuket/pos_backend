@@ -52,10 +52,13 @@ export class TransactionsService {
       where: { id: orderId }, 
       relations: ['user', 'items', 'items.product'] 
     });
-    
+  
     if (!order) {
       throw new HttpException('Order not found', HttpStatus.NOT_FOUND);
     }
+  
+    
+    const totalAmount = order.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   
     const snap = new midtransClient.Snap({
       isProduction: false, 
@@ -65,7 +68,7 @@ export class TransactionsService {
     const transactionDetails = {
       transaction_details: {
         order_id: `ORDER-${order.id}-${Date.now()}`,
-        gross_amount: order.total,
+        gross_amount: totalAmount,  
       },
       customer_details: {
         first_name: order.user.username,
@@ -78,6 +81,14 @@ export class TransactionsService {
         name: item.product.name,
       })),
     };
+  
+    
+    if (transactionDetails.transaction_details.gross_amount !== totalAmount) {
+      throw new HttpException(
+        `Gross amount does not match the sum of item details. Expected: ${totalAmount}, Found: ${transactionDetails.transaction_details.gross_amount}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   
     try {
       const midtransResponse = await snap.createTransaction(transactionDetails);
@@ -93,9 +104,19 @@ export class TransactionsService {
   
       return midtransResponse;
     } catch (error) {
-      throw new HttpException('Failed to create transaction with Midtrans', HttpStatus.INTERNAL_SERVER_ERROR);
+      
+      console.error('Midtrans Error:', error);
+      console.error('Error Message:', error.message);
+      console.error('Error Response:', error.response);
+      console.error('Error Status:', error.status);
+  
+      throw new HttpException(
+        `Failed to create transaction with Midtrans. ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
+  
   
 
   async findAll(): Promise<Transaction[]> {
@@ -179,12 +200,14 @@ export class TransactionsService {
 
   
   async updateTransaction(transaction: Transaction, orderStatus: string): Promise<void> {
-    
+    console.log('Updating order status:', orderStatus);
+
     await this.transactionRepository.save(transaction);
 
     
     const order = transaction.order;
     order.status = orderStatus;
+    console.log('Current order status:', order.status);
     await this.orderRepository.save(order); 
   }
 

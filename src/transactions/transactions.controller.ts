@@ -91,10 +91,8 @@ export class TransactionsController {
 
     const statusResponse = await apiClient.transaction.notification(notification);
 
-    
     const orderId = parseInt(statusResponse.order_id.split('-')[1]);
 
-    
     const transaction = await this.transactionsService.findByOrderId(orderId);
 
     if (!transaction) {
@@ -102,19 +100,25 @@ export class TransactionsController {
     }
 
     let orderStatus = '';
+
     
     if (statusResponse.transaction_status === 'settlement') {
       transaction.payment_status = 'success';
-      orderStatus = 'paid'; 
+      orderStatus = 'paid';
     } else if (statusResponse.transaction_status === 'cancel' || statusResponse.transaction_status === 'expire') {
       transaction.payment_status = 'failed';
-      orderStatus = 'cancelled'; 
+      orderStatus = 'cancelled';
     }
 
     
-    await this.transactionsService.updateTransaction(transaction, orderStatus);
+    if (orderStatus) {
+      await this.transactionsService.updateTransaction(transaction, orderStatus);
+    } else {
+      console.log(`Order status is null, skipping update for order ID: ${orderId}`);
+    }
 
     return 'Notification handled';
   }
+
 
 }
