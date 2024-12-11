@@ -7,7 +7,8 @@ import {
   Param,
   Delete,
   UseGuards,
-} from '@nestjs/common';
+  Request,
+ } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -36,6 +37,15 @@ export class OrdersController {
   @UseGuards(AuthGuard('jwt'))
   async findAll(): Promise<Order[]> {
     return await this.ordersService.findAll();
+  }
+
+  @Get('pending')
+  @ApiOperation({ summary: 'Get pending orders' })
+  @ApiResponse({ status: 200, description: 'Return pending orders.', type: [Order] })
+  @UseGuards(AuthGuard('jwt'))
+  async getPendingOrders(@Request() req): Promise<Order[]> {
+    const userId = req.user.id; // Extract userId from JWT payload
+    return await this.ordersService.findPendingOrdersByUser(userId);
   }
 
   @Get(':id')
