@@ -49,7 +49,7 @@ export class TransactionsService {
 
   async createMidtransTransaction(orderId: number): Promise<any> {
     const order = await this.transactionRepository.manager.findOne(Order, { 
-      where: { id: orderId }, 
+      where: { id: orderId },
       relations: ['user', 'items', 'items.product'] 
     });
   
@@ -58,62 +58,127 @@ export class TransactionsService {
     }
   
     
-    const totalAmount = order.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  
-    const snap = new midtransClient.Snap({
-      isProduction: false, 
-      serverKey: 'SB-Mid-server-o1ajMIhAJSsiHH6zNEhl4vNA',
+    const existingTransaction = await this.transactionRepository.findOne({
+      where: { order: { id: orderId }, payment_status: 'pending' }
     });
   
-    const transactionDetails = {
-      transaction_details: {
-        order_id: `ORDER-${order.id}-${Date.now()}`,
-        gross_amount: totalAmount,  
-      },
-      customer_details: {
-        first_name: order.user.username,
-        email: order.user.email,
-      },
-      item_details: order.items.map(item => ({
-        id: item.product.id,
-        price: item.product.price,
-        quantity: item.quantity,
-        name: item.product.name,
-      })),
-    };
+    if (existingTransaction) {
+      
+      console.log(`Transaction already exists for order ${orderId}, updating the existing transaction.`);
+      
+      const totalAmount = order.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   
-    
-    if (transactionDetails.transaction_details.gross_amount !== totalAmount) {
-      throw new HttpException(
-        `Gross amount does not match the sum of item details. Expected: ${totalAmount}, Found: ${transactionDetails.transaction_details.gross_amount}`,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  
-    try {
-      const midtransResponse = await snap.createTransaction(transactionDetails);
-  
-      const transaction = this.transactionRepository.create({
-        order,
-        payment_method: 'midtrans',
-        payment_status: 'pending',
-        transaction_data: midtransResponse,
+      
+      const snap = new midtransClient.Snap({
+        isProduction: false,
+        serverKey: 'SB-Mid-server-o1ajMIhAJSsiHH6zNEhl4vNA',
       });
   
-      await this.transactionRepository.save(transaction);
+      const transactionDetails = {
+        transaction_details: {
+          order_id: `ORDER-${order.id}-${Date.now()}`,
+          gross_amount: totalAmount,
+        },
+        customer_details: {
+          first_name: order.user.username,
+          email: order.user.email,
+        },
+        item_details: order.items.map(item => ({
+          id: item.product.id,
+          price: item.product.price,
+          quantity: item.quantity,
+          name: item.product.name,
+        })),
+      };
   
-      return midtransResponse;
-    } catch (error) {
       
-      console.error('Midtrans Error:', error);
-      console.error('Error Message:', error.message);
-      console.error('Error Response:', error.response);
-      console.error('Error Status:', error.status);
+      if (transactionDetails.transaction_details.gross_amount !== totalAmount) {
+        throw new HttpException(
+          `Gross amount does not match the sum of item details. Expected: ${totalAmount}, Found: ${transactionDetails.transaction_details.gross_amount}`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
   
-      throw new HttpException(
-        `Failed to create transaction with Midtrans. ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      
+      try {
+        const midtransResponse = await snap.createTransaction(transactionDetails);
+  
+        
+        existingTransaction.transaction_data = midtransResponse;
+        existingTransaction.payment_status = 'pending'; 
+        await this.transactionRepository.save(existingTransaction);
+  
+        return midtransResponse;
+      } catch (error) {
+        console.error('Midtrans Error:', error);
+        console.error('Error Message:', error.message);
+        console.error('Error Response:', error.response);
+        console.error('Error Status:', error.status);
+  
+        throw new HttpException(
+          `Failed to update transaction with Midtrans. ${error.message}`,
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+  
+    } else {
+      
+      const totalAmount = order.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  
+      const snap = new midtransClient.Snap({
+        isProduction: false, 
+        serverKey: 'SB-Mid-server-o1ajMIhAJSsiHH6zNEhl4vNA',
+      });
+  
+      const transactionDetails = {
+        transaction_details: {
+          order_id: `ORDER-${order.id}-${Date.now()}`,
+          gross_amount: totalAmount,  
+        },
+        customer_details: {
+          first_name: order.user.username,
+          email: order.user.email,
+        },
+        item_details: order.items.map(item => ({
+          id: item.product.id,
+          price: item.product.price,
+          quantity: item.quantity,
+          name: item.product.name,
+        })),
+      };
+  
+      
+      if (transactionDetails.transaction_details.gross_amount !== totalAmount) {
+        throw new HttpException(
+          `Gross amount does not match the sum of item details. Expected: ${totalAmount}, Found: ${transactionDetails.transaction_details.gross_amount}`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+  
+      try {
+        const midtransResponse = await snap.createTransaction(transactionDetails);
+  
+        const transaction = this.transactionRepository.create({
+          order,
+          payment_method: 'midtrans',
+          payment_status: 'pending',
+          transaction_data: midtransResponse,
+        });
+  
+        await this.transactionRepository.save(transaction);
+  
+        return midtransResponse;
+      } catch (error) {
+        console.error('Midtrans Error:', error);
+        console.error('Error Message:', error.message);
+        console.error('Error Response:', error.response);
+        console.error('Error Status:', error.status);
+  
+        throw new HttpException(
+          `Failed to create transaction with Midtrans. ${error.message}`,
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
     }
   }
   
