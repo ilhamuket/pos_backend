@@ -65,7 +65,6 @@ export class TransactionsController {
   @ApiOperation({ summary: 'Create a new transaction' })
   @ApiResponse({ status: 201, description: 'The transaction has been successfully created.', type: Transaction })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
-  @UseGuards(AuthGuard('jwt'))
   async createTransaction(@Param('orderId') orderId: number): Promise<any> {
     try {
       const midtransResponse = await this.transactionsService.createMidtransTransaction(orderId);
@@ -82,7 +81,6 @@ export class TransactionsController {
   @ApiOperation({ summary: 'Handle Midtrans notification' })
   @ApiResponse({ status: 200, description: 'The notification has been successfully handled.' })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
-  @UseGuards(AuthGuard('jwt'))
   async handleNotification(@Request() req): Promise<string> {
     const notification = req.body;
 
