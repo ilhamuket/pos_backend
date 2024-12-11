@@ -1,15 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Transaction } from './entities/transaction.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { Order } from '../orders/entities/order.entity';
+import * as midtransClient from 'midtrans-client';
 
 @Injectable()
 export class TransactionsService {
   constructor(
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
+
+    @InjectRepository(Order) 
+    private readonly orderRepository: Repository<Order>,
   ) {}
 
   async create(createTransactionDto: CreateTransactionDto): Promise<Transaction> {
@@ -41,6 +45,56 @@ export class TransactionsService {
   
     
     return this.transactionRepository.save(transaction);
+  }
+
+  async createMidtransTransaction(orderId: number): Promise<any> {
+    const order = await this.transactionRepository.manager.findOne(Order, { 
+      where: { id: orderId }, 
+      relations: ['user', 'items', 'items.product'] 
+    });
+    
+    if (!order) {
+      throw new HttpException('Order not found', HttpStatus.NOT_FOUND);
+    }
+  
+    const snap = new midtransClient.Snap({
+      isProduction: false, 
+      serverKey: 'SB-Mid-server-o1ajMIhAJSsiHH6zNEhl4vNA',
+    });
+  
+    const transactionDetails = {
+      transaction_details: {
+        order_id: `ORDER-${order.id}-${Date.now()}`,
+        gross_amount: order.total,
+      },
+      customer_details: {
+        first_name: order.user.username,
+        email: order.user.email,
+      },
+      item_details: order.items.map(item => ({
+        id: item.product.id,
+        price: item.product.price,
+        quantity: item.quantity,
+        name: item.product.name,
+      })),
+    };
+  
+    try {
+      const midtransResponse = await snap.createTransaction(transactionDetails);
+  
+      const transaction = this.transactionRepository.create({
+        order,
+        payment_method: 'midtrans',
+        payment_status: 'pending',
+        transaction_data: midtransResponse,
+      });
+  
+      await this.transactionRepository.save(transaction);
+  
+      return midtransResponse;
+    } catch (error) {
+      throw new HttpException('Failed to create transaction with Midtrans', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
   
 
@@ -115,4 +169,23 @@ export class TransactionsService {
 
     await this.transactionRepository.delete(id); 
   }
+
+  async findByOrderId(orderId: number): Promise<Transaction | null> {
+    return this.transactionRepository.findOne({
+      where: { order: { id: orderId } }, 
+      relations: ['order'], 
+    });
+  }
+
+  
+  async updateTransaction(transaction: Transaction, orderStatus: string): Promise<void> {
+    
+    await this.transactionRepository.save(transaction);
+
+    
+    const order = transaction.order;
+    order.status = orderStatus;
+    await this.orderRepository.save(order); 
+  }
+
 }

@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, HttpException, HttpStatus } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { ApiResponse, ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Transaction } from './entities/transaction.entity';
 import { AuthGuard } from '@nestjs/passport';
+import * as midtransClient from 'midtrans-client';
+
 
 @ApiTags('Transactions') 
 @ApiBearerAuth() 
@@ -58,4 +60,63 @@ export class TransactionsController {
   async remove(@Param('id') id: string): Promise<void> {
     return this.transactionsService.remove(Number(id));
   }
+
+  @Post(':orderId/midtrans')
+  @ApiOperation({ summary: 'Create a new transaction' })
+  @ApiResponse({ status: 201, description: 'The transaction has been successfully created.', type: Transaction })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  @UseGuards(AuthGuard('jwt'))
+  async createTransaction(@Param('orderId') orderId: number): Promise<any> {
+    try {
+      const midtransResponse = await this.transactionsService.createMidtransTransaction(orderId);
+      return { status: 'success', data: midtransResponse };
+    } catch (error) {
+      console.error('Midtrans error:', error);
+      throw new HttpException(error.message, error.status || 400);
+    }
+  }
+
+
+  
+  @Post('midtrans/notification')
+  @ApiOperation({ summary: 'Handle Midtrans notification' })
+  @ApiResponse({ status: 200, description: 'The notification has been successfully handled.' })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  @UseGuards(AuthGuard('jwt'))
+  async handleNotification(@Request() req): Promise<string> {
+    const notification = req.body;
+
+    const apiClient = new midtransClient.CoreApi({
+      isProduction: false,
+      serverKey: 'SB-Mid-server-o1ajMIhAJSsiHH6zNEhl4vNA', 
+    });
+
+    const statusResponse = await apiClient.transaction.notification(notification);
+
+    
+    const orderId = parseInt(statusResponse.order_id.split('-')[1]);
+
+    
+    const transaction = await this.transactionsService.findByOrderId(orderId);
+
+    if (!transaction) {
+      throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
+    }
+
+    let orderStatus = '';
+    
+    if (statusResponse.transaction_status === 'settlement') {
+      transaction.payment_status = 'success';
+      orderStatus = 'paid'; 
+    } else if (statusResponse.transaction_status === 'cancel' || statusResponse.transaction_status === 'expire') {
+      transaction.payment_status = 'failed';
+      orderStatus = 'cancelled'; 
+    }
+
+    
+    await this.transactionsService.updateTransaction(transaction, orderStatus);
+
+    return 'Notification handled';
+  }
+
 }
